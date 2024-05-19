@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "547009348647",
+    "project_id": "servi-express-271aa",
+    "storage_bucket": "servi-express-271aa.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:547009348647:android:7fff04d90fb0171427fa02",
+        "android_client_info": {
+          "package_name": "com.example.servi_express"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCiTy0oSguWIkMdPOEkvpsiXqNY3jYTq4U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
