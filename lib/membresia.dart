@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // Importar Firebase Firestore
 
 void main() {
   runApp(MyApp());
@@ -18,6 +19,37 @@ class MyApp extends StatelessWidget {
 }
 
 class MembershipPage extends StatelessWidget {
+  Future<void> _buyMembership(
+      BuildContext context, String title, int price) async {
+    // Verificar si el usuario ya ha comprado una membresía
+    var snapshot = await FirebaseFirestore.instance
+        .collection('membresias')
+        .doc('userId')
+        .get();
+    if (snapshot.exists) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ya has comprado una membresía.')),
+      );
+      return;
+    }
+
+    // Registrar la compra de la membresía en Firestore
+    await FirebaseFirestore.instance
+        .collection('membresias')
+        .doc('userId')
+        .set({
+      'title': title,
+      'price': price,
+      'date': DateTime.now(),
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Gracias por comprar la membresía $title.')),
+    );
+
+    Navigator.pop(context); // Regresar a la pantalla anterior
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -40,6 +72,7 @@ class MembershipPage extends StatelessWidget {
             urgentAds: 10,
             premiumAds: 3,
             color: Colors.blueGrey,
+            onBuy: (context) => _buyMembership(context, 'Platino', 45000),
           ),
           MembershipCard(
             title: 'Diamante',
@@ -48,6 +81,7 @@ class MembershipPage extends StatelessWidget {
             urgentAds: 5,
             premiumAds: 1,
             color: Colors.blue,
+            onBuy: (context) => _buyMembership(context, 'Diamante', 30000),
           ),
           MembershipCard(
             title: 'Oro',
@@ -56,6 +90,7 @@ class MembershipPage extends StatelessWidget {
             urgentAds: 3,
             premiumAds: 0,
             color: Colors.amber,
+            onBuy: (context) => _buyMembership(context, 'Oro', 18500),
           ),
         ],
       ),
@@ -70,6 +105,7 @@ class MembershipCard extends StatelessWidget {
   final int urgentAds;
   final int premiumAds;
   final Color color;
+  final Function(BuildContext) onBuy;
 
   MembershipCard({
     required this.title,
@@ -78,6 +114,7 @@ class MembershipCard extends StatelessWidget {
     required this.urgentAds,
     required this.premiumAds,
     required this.color,
+    required this.onBuy,
   });
 
   @override
@@ -106,9 +143,7 @@ class MembershipCard extends StatelessWidget {
             Text('Anuncios Premium: $premiumAds'),
             SizedBox(height: 10.0),
             ElevatedButton(
-              onPressed: () {
-                // Lógica para comprar la membresía
-              },
+              onPressed: () => onBuy(context),
               child: Text('Comprar'),
             ),
           ],

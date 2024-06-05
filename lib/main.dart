@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
 import 'package:servi_express/firebase_options.dart';
 import 'anuncio.dart';
 
@@ -38,7 +39,8 @@ class AuthService {
     }
 
     try {
-      final userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+      final userCredential =
+          await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email.trim(),
         password: password.trim(),
       );
@@ -64,16 +66,28 @@ class AuthService {
     }
   }
 
-  static Future<void> register(String email, String password) async {
+  static Future<void> register(
+      String email, String password, String userType) async {
     if (email.isEmpty || password.isEmpty) {
       throw Exception('Ingrese un correo electrónico y contraseña válidos.');
     }
 
     try {
-      final userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      final userCredential =
+          await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email.trim(),
         password: password.trim(),
       );
+
+      // Guardar información adicional en Firestore
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userCredential.user!.uid)
+          .set({
+        'email': email,
+        'userType': userType,
+      });
+
       // Handle successful registration (navigate to HomeScreen or show success message)
     } catch (e) {
       print('Error al registrar: $e');
@@ -84,7 +98,8 @@ class AuthService {
           case 'invalid-email':
             throw Exception('Correo electrónico no válido.');
           case 'weak-password':
-            throw Exception('Contraseña débil. Elija una contraseña más segura.');
+            throw Exception(
+                'Contraseña débil. Elija una contraseña más segura.');
           default:
             throw Exception('Error desconocido al registrar.');
         }
@@ -105,8 +120,10 @@ class _LoginScreenState extends State<LoginScreen> {
   final GlobalKey<FormState> _registerFormKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _userTypeController = TextEditingController();
 
   bool _isLoginForm = true;
+  String _selectedUserType = 'domiciliario'; // Default value for the select
 
   @override
   Widget build(BuildContext context) {
@@ -219,6 +236,24 @@ class _LoginScreenState extends State<LoginScreen> {
               return null;
             },
           ),
+          SizedBox(height: 20.0),
+          DropdownButtonFormField<String>(
+            value: _selectedUserType,
+            decoration: InputDecoration(
+              labelText: 'Tipo de Usuario',
+            ),
+            items: <String>['domiciliario', 'empresa'].map((String value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Text(value),
+              );
+            }).toList(),
+            onChanged: (String? newValue) {
+              setState(() {
+                _selectedUserType = newValue!;
+              });
+            },
+          ),
           SizedBox(height: 30.0),
           ElevatedButton(
             onPressed: () async {
@@ -227,6 +262,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   await AuthService.register(
                     _emailController.text.trim(),
                     _passwordController.text.trim(),
+                    _selectedUserType,
                   );
                   Navigator.pushReplacement(
                     context,

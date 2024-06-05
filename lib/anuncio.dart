@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'membresia.dart';
 import 'configuracion.dart';
-
-void main() {
-  runApp(Anuncio());
-}
 
 class Anuncio extends StatelessWidget {
   @override
@@ -21,47 +18,18 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  String _adName = '';
-  String _adContent = '';
-  int _adParticipants = 0;
-  double _adValue = 0.0;
-
-  List<Map<String, dynamic>> _appliedAds = [];
-  List<Map<String, dynamic>> _publishedAds = [];
-
-  void updateAdDetails(String name, String content, int participants, double value, String vehicleType) {
-    setState(() {
-      _adName = name;
-      _adContent = content;
-      _adParticipants = participants;
-      _adValue = value;
+  Future<void> publishAd(String name, String content, int participants,
+      double value, String vehicleType) async {
+    await FirebaseFirestore.instance.collection('anuncios').add({
+      'name': name,
+      'content': content,
+      'participants': participants,
+      'value': value,
+      'vehicleType': vehicleType,
     });
   }
 
-  void applyToAd(String name, String content, int participants, double value) {
-    setState(() {
-      _appliedAds.add({
-        'name': name,
-        'content': content,
-        'participants': participants,
-        'value': value,
-      });
-    });
-  }
-
-  void publishAd(String name, String content, int participants, double value, String vehicleType) {
-    setState(() {
-      _publishedAds.add({
-        'name': name,
-        'content': content,
-        'participants': participants,
-        'value': value,
-        'vehicleType': vehicleType,
-      });
-    });
-  }
-
-  void showAdDetailsDialog(BuildContext context) {
+  void showAdDetailsDialog(BuildContext context, Map<String, dynamic> ad) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -70,10 +38,11 @@ class _MyHomePageState extends State<MyHomePage> {
           content: SingleChildScrollView(
             child: ListBody(
               children: <Widget>[
-                Text('Nombre: $_adName'),
-                Text('Contenido del Anuncio: $_adContent'),
-                Text('Cantidad de Participantes: $_adParticipants'),
-                Text('Valor: $_adValue'),
+                Text('Nombre: ${ad['name']}'),
+                Text('Contenido del Anuncio: ${ad['content']}'),
+                Text('Cantidad de Participantes: ${ad['participants']}'),
+                Text('Valor: ${ad['value']}'),
+                Text('Tipo de Vehículo: ${ad['vehicleType']}'),
               ],
             ),
           ),
@@ -101,37 +70,32 @@ class _MyHomePageState extends State<MyHomePage> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => ProfilePage(appliedAds: _appliedAds, publishedAds: _publishedAds)),
+                MaterialPageRoute(builder: (context) => ProfilePage()),
               );
             },
           ),
         ],
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text('Anuncios disponibles', style: TextStyle(fontSize: 20.0)),
-            AnuncioCard(
-              titulo: 'Anuncio 1',
-              onPressedAplicar: () {
-                applyToAd('Anuncio 1', 'Contenido del Anuncio 1', 10, 100.0);
-              },
-              onPressedVerMas: () {
-                showAdDetailsDialog(context);
-              },
-            ),
-            AnuncioCard(
-              titulo: 'Anuncio 2',
-              onPressedAplicar: () {
-                applyToAd('Anuncio 2', 'Contenido del Anuncio 2', 5, 200.0);
-              },
-              onPressedVerMas: () {
-                showAdDetailsDialog(context);
-              },
-            ),
-          ],
-        ),
+      body: StreamBuilder(
+        stream: FirebaseFirestore.instance.collection('anuncios').snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return Center(child: CircularProgressIndicator());
+          }
+          var ads = snapshot.data!.docs;
+          return ListView.builder(
+            itemCount: ads.length,
+            itemBuilder: (context, index) {
+              var ad = ads[index].data() as Map<String, dynamic>;
+              return AnuncioCard(
+                titulo: ad['name'],
+                onPressedVerMas: () {
+                  showAdDetailsDialog(context, ad);
+                },
+              );
+            },
+          );
+        },
       ),
       drawer: Drawer(
         child: ListView(
@@ -139,32 +103,34 @@ class _MyHomePageState extends State<MyHomePage> {
           children: <Widget>[
             DrawerHeader(
               decoration: BoxDecoration(color: Colors.blue),
-              child: Text('Menú', style: TextStyle(color: Colors.white, fontSize: 24)),
+              child: Text('Menú',
+                  style: TextStyle(color: Colors.white, fontSize: 24)),
             ),
             ListTile(
-              title: Text('Comprar Membresia'),
+              title: Text('Comprar Membresía'),
               onTap: () {
-                Navigator.pop(context); // Cierra el menú
+                Navigator.pop(context);
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => MembershipPage()),
                 );
               },
             ),
-            GestureDetector(
+            ListTile(
+              title: Text('Crear Anuncio'),
               onTap: () {
-                Navigator.pop(context); // Cierra el menú
+                Navigator.pop(context);
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => CreateAdPage(publishAd)),
+                  MaterialPageRoute(
+                      builder: (context) => CreateAdPage(publishAd)),
                 );
               },
-              child: ListTile(title: Text('Crear Anuncio')),
             ),
             ListTile(
               title: Text('Configuraciones'),
               onTap: () {
-                Navigator.pop(context); // Cierra el menú
+                Navigator.pop(context);
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => SettingsPage()),
@@ -173,6 +139,32 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class AnuncioCard extends StatelessWidget {
+  final String titulo;
+  final VoidCallback onPressedVerMas;
+
+  AnuncioCard({required this.titulo, required this.onPressedVerMas});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Column(
+        children: <Widget>[
+          ListTile(title: Text(titulo)),
+          ButtonBar(
+            children: <Widget>[
+              ElevatedButton(
+                onPressed: onPressedVerMas,
+                child: Text('Ver más'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -239,7 +231,8 @@ class _CreateAdPageState extends State<CreateAdPage> {
             ),
             TextField(
               controller: _participantsController,
-              decoration: InputDecoration(labelText: 'Cantidad de Participantes'),
+              decoration:
+                  InputDecoration(labelText: 'Cantidad de Participantes'),
               keyboardType: TextInputType.number,
               onChanged: (value) {
                 _checkButtonState();
@@ -274,11 +267,13 @@ class _CreateAdPageState extends State<CreateAdPage> {
                   ? () {
                       String name = _nameController.text;
                       String content = _contentController.text;
-                      int participants = int.parse(_participantsController.text);
+                      int participants =
+                          int.parse(_participantsController.text);
                       double value = double.parse(_valueController.text);
                       String vehicleType = _selectedVehicleType;
 
-                      widget.publishAd(name, content, participants, value, vehicleType);
+                      widget.publishAd(
+                          name, content, participants, value, vehicleType);
 
                       Navigator.pop(context);
                     }
@@ -293,10 +288,16 @@ class _CreateAdPageState extends State<CreateAdPage> {
 }
 
 class ProfilePage extends StatelessWidget {
-  final List<Map<String, dynamic>> appliedAds;
-  final List<Map<String, dynamic>> publishedAds;
-
-  ProfilePage({required this.appliedAds, required this.publishedAds});
+  Future<Map<String, dynamic>?> _fetchMembership() async {
+    var snapshot = await FirebaseFirestore.instance
+        .collection('membresias')
+        .doc('userId')
+        .get();
+    if (snapshot.exists) {
+      return snapshot.data();
+    }
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -326,13 +327,42 @@ class ProfilePage extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => AppliedAdsPage(appliedAds: appliedAds)),
+                  MaterialPageRoute(builder: (context) => PublishedAdsPage()),
                 );
               },
               child: Text('Anuncios publicados'),
             ),
             ElevatedButton(
-              onPressed: () {},
+              onPressed: () async {
+                var membership = await _fetchMembership();
+                if (membership != null) {
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      return AlertDialog(
+                        title: Text('Membresía Actual'),
+                        content: Text(
+                          'Membresía: ${membership['title']}\n'
+                          'Precio: ${membership['price']} COP\n'
+                          'Fecha de Compra: ${membership['date'].toDate()}',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                            },
+                            child: Text('Cerrar'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('No has comprado una membresía.')),
+                  );
+                }
+              },
               child: Text('Membresía'),
             ),
           ],
@@ -342,44 +372,7 @@ class ProfilePage extends StatelessWidget {
   }
 }
 
-class CompanyInfoPage extends StatefulWidget {
-  @override
-  _CompanyInfoPageState createState() => _CompanyInfoPageState();
-}
-
-class _CompanyInfoPageState extends State<CompanyInfoPage> {
-  String _companyName = 'Nombre de la Empresa';
-  String _companyDescription = 'Descripción de la Empresa';
-  String _ownerName = 'Nombre del Dueño';
-  String _location = 'Ubicación';
-
-  bool _isEditing = false;
-  final TextEditingController _companyNameController = TextEditingController();
-  final TextEditingController _companyDescriptionController = TextEditingController();
-  final TextEditingController _ownerNameController = TextEditingController();
-  final TextEditingController _locationController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    _companyNameController.text = _companyName;
-    _companyDescriptionController.text = _companyDescription;
-    _ownerNameController.text = _ownerName;
-    _locationController.text = _location;
-  }
-
-  void _toggleEdit() {
-    setState(() {
-      if (_isEditing) {
-        _companyName = _companyNameController.text;
-        _companyDescription = _companyDescriptionController.text;
-        _ownerName = _ownerNameController.text;
-        _location = _locationController.text;
-      }
-      _isEditing = !_isEditing;
-    });
-  }
-
+class CompanyInfoPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -388,231 +381,53 @@ class _CompanyInfoPageState extends State<CompanyInfoPage> {
       ),
       body: Padding(
         padding: EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            if (_isEditing)
-              Column(
-                children: <Widget>[
-                  TextField(
-                    controller: _companyNameController,
-                    decoration: InputDecoration(labelText: 'Nombre de la Empresa'),
-                  ),
-                  TextField(
-                    controller: _companyDescriptionController,
-                    decoration: InputDecoration(labelText: 'Descripción de la Empresa'),
-                  ),
-                  TextField(
-                    controller: _ownerNameController,
-                    decoration: InputDecoration(labelText: 'Nombre del Dueño'),
-                  ),
-                  TextField(
-                    controller: _locationController,
-                    decoration: InputDecoration(labelText: 'Ubicación'),
-                  ),
-                ],
-              )
-            else
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text('Nombre de la Empresa: $_companyName', style: TextStyle(fontSize: 16)),
-                  SizedBox(height: 8),
-                  Text('Descripción de la Empresa: $_companyDescription', style: TextStyle(fontSize: 16)),
-                  SizedBox(height: 8),
-                  Text('Nombre del Dueño: $_ownerName', style: TextStyle(fontSize: 16)),
-                  SizedBox(height: 8),
-                  Text('Ubicación: $_location', style: TextStyle(fontSize: 16)),
-                ],
-              ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _toggleEdit,
-              child: Text(_isEditing ? 'Guardar' : 'Editar'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class AppliedAdsPage extends StatelessWidget {
-  final List<Map<String, dynamic>> appliedAds;
-
-  AppliedAdsPage({required this.appliedAds});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Anuncios Aplicados'),
-      ),
-      body: ListView.builder(
-        itemCount: appliedAds.length,
-        itemBuilder: (context, index) {
-          final ad = appliedAds[index];
-          return ListTile(
-            title: Text(ad['name']),
-            subtitle: Text(ad['content']),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class AnuncioCard extends StatelessWidget {
-  final String titulo;
-  final VoidCallback onPressedAplicar;
-  final VoidCallback onPressedVerMas;
-
-  AnuncioCard({required this.titulo, required this.onPressedAplicar, required this.onPressedVerMas});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Column(
-        children: <Widget>[
-          ListTile(title: Text(titulo)),
-          ButtonBar(
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              ElevatedButton(
-                onPressed: onPressedAplicar,
-                child: Text('Aplicar'),
+              Text(
+                'Información de la Empresa',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
-              ElevatedButton(
-                onPressed: onPressedVerMas,
-                child: Text('Ver más'),
+              SizedBox(height: 20),
+              Text(
+                'Somos una empresa comprometida con el medio ambiente...',
+                style: TextStyle(fontSize: 18),
               ),
+              // Agrega más información según sea necesario
             ],
           ),
-        ],
+        ),
       ),
     );
   }
 }
 
 class PublishedAdsPage extends StatelessWidget {
-  final List<Map<String, dynamic>> publishedAds;
-
-  PublishedAdsPage({required this.publishedAds});
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('Anuncios Publicados'),
       ),
-      body: ListView.builder(
-        itemCount: publishedAds.length,
-        itemBuilder: (context, index) {
-          final ad = publishedAds[index];
-          return ListTile(
-            title: Text(ad['name']),
-            subtitle: Text(ad['content']),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => EditAdPage(ad: ad),
-                ),
+      body: StreamBuilder(
+        stream: FirebaseFirestore.instance.collection('anuncios').snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return Center(child: CircularProgressIndicator());
+          }
+          var ads = snapshot.data!.docs;
+          return ListView.builder(
+            itemCount: ads.length,
+            itemBuilder: (context, index) {
+              var ad = ads[index].data() as Map<String, dynamic>;
+              return ListTile(
+                title: Text(ad['name']),
+                subtitle: Text(ad['content']),
               );
             },
           );
         },
-      ),
-    );
-  }
-}
-
-class EditAdPage extends StatefulWidget {
-  final Map<String, dynamic> ad;
-
-  EditAdPage({required this.ad});
-
-  @override
-  _EditAdPageState createState() => _EditAdPageState();
-}
-
-class _EditAdPageState extends State<EditAdPage> {
-  late TextEditingController _nameController;
-  late TextEditingController _contentController;
-  late TextEditingController _participantsController;
-  late TextEditingController _valueController;
-  late String _selectedVehicleType;
-
-  @override
-  void initState() {
-    super.initState();
-    _nameController = TextEditingController(text: widget.ad['name']);
-    _contentController = TextEditingController(text: widget.ad['content']);
-    _participantsController = TextEditingController(text: widget.ad['participants'].toString());
-    _valueController = TextEditingController(text: widget.ad['value'].toString());
-    _selectedVehicleType = widget.ad['vehicleType'];
-  }
-
-  void _saveAd() {
-    setState(() {
-      widget.ad['name'] = _nameController.text;
-      widget.ad['content'] = _contentController.text;
-      widget.ad['participants'] = int.parse(_participantsController.text);
-      widget.ad['value'] = double.parse(_valueController.text);
-      widget.ad['vehicleType'] = _selectedVehicleType;
-    });
-    Navigator.pop(context);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Editar Anuncio'),
-      ),
-      body: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            TextField(
-              controller: _nameController,
-              decoration: InputDecoration(labelText: 'Nombre'),
-            ),
-            TextField(
-              controller: _contentController,
-              decoration: InputDecoration(labelText: 'Contenido del Anuncio'),
-            ),
-            TextField(
-              controller: _participantsController,
-              decoration: InputDecoration(labelText: 'Cantidad de Participantes'),
-              keyboardType: TextInputType.number,
-            ),
-            TextField(
-              controller: _valueController,
-              decoration: InputDecoration(labelText: 'Valor'),
-              keyboardType: TextInputType.number,
-            ),
-            DropdownButton<String>(
-              value: _selectedVehicleType,
-              items: <String>['Carro', 'Moto', 'Bicicleta'].map((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value),
-                );
-              }).toList(),
-              onChanged: (String? newValue) {
-                setState(() {
-                  _selectedVehicleType = newValue!;
-                });
-              },
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _saveAd,
-              child: Text('Guardar'),
-            ),
-          ],
-        ),
       ),
     );
   }
