@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'membresia.dart';
 import 'configuracion.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 class Anuncio extends StatelessWidget {
   @override
@@ -288,17 +291,6 @@ class _CreateAdPageState extends State<CreateAdPage> {
 }
 
 class ProfilePage extends StatelessWidget {
-  Future<Map<String, dynamic>?> _fetchMembership() async {
-    var snapshot = await FirebaseFirestore.instance
-        .collection('membresias')
-        .doc('userId')
-        .get();
-    if (snapshot.exists) {
-      return snapshot.data();
-    }
-    return null;
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -316,12 +308,47 @@ class ProfilePage extends StatelessWidget {
             SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
+                if (CompanyInfoForm.empresaGuardada != null) {
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      return AlertDialog(
+                        title: Text('Información de la Empresa'),
+                        content: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text('Nombre: ${CompanyInfoForm.empresaGuardada!.nombre}'),
+                            Text('Introducción: ${CompanyInfoForm.empresaGuardada!.introduccion}'),
+                            Text('Dirección: ${CompanyInfoForm.empresaGuardada!.direccion}'),
+                            Text('Teléfono: ${CompanyInfoForm.empresaGuardada!.telefono}'),
+                          ],
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                            },
+                            child: Text('Cerrar'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('No hay información de empresa guardada')));
+                }
+              },
+              child: Text('Perfil'),
+            ),
+            ElevatedButton(
+              onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => CompanyInfoPage()),
+                  MaterialPageRoute(builder: (context) => CompanyInfoForm()),
                 );
               },
-              child: Text('Información'),
+              child: Text('Editar Perfil'),
             ),
             ElevatedButton(
               onPressed: () {
@@ -342,11 +369,8 @@ class ProfilePage extends StatelessWidget {
                       return AlertDialog(
                         title: Text('Membresía Actual'),
                         content: Text(
-                          'Membresía: ${membership['title']}\n'
-                          'Precio: ${membership['price']} COP\n'
-                          'Fecha de Compra: ${membership['date'].toDate()}',
-                        ),
-                        actions: [
+                            'Tipo de Membresía: ${membership['tipo']}\nEstado: ${membership['estado']}'),
+                        actions: <Widget>[
                           TextButton(
                             onPressed: () {
                               Navigator.pop(context);
@@ -357,20 +381,43 @@ class ProfilePage extends StatelessWidget {
                       );
                     },
                   );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('No has comprado una membresía.')),
-                  );
                 }
               },
-              child: Text('Membresía'),
+              child: Text('Ver Membresía'),
             ),
           ],
         ),
       ),
     );
   }
+
+  Future<Map<String, dynamic>?> _fetchMembership() async {
+    var snapshot = await FirebaseFirestore.instance
+        .collection('membresias')
+        .doc('userId')
+        .get();
+    if (snapshot.exists) {
+      return snapshot.data();
+    }
+    return null;
+  }
 }
+
+
+class Empresa {
+  final String nombre;
+  final String introduccion;
+  final String direccion;
+  final String telefono;
+
+  Empresa({
+    required this.nombre,
+    required this.introduccion,
+    required this.direccion,
+    required this.telefono,
+  });
+}
+
 
 class CompanyInfoPage extends StatelessWidget {
   @override
@@ -390,11 +437,7 @@ class CompanyInfoPage extends StatelessWidget {
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
               SizedBox(height: 20),
-              Text(
-                'Somos una empresa comprometida con el medio ambiente...',
-                style: TextStyle(fontSize: 18),
-              ),
-              // Agrega más información según sea necesario
+              CompanyInfoForm(), // Llamada a la clase interna
             ],
           ),
         ),
@@ -402,6 +445,132 @@ class CompanyInfoPage extends StatelessWidget {
     );
   }
 }
+
+class CompanyInfoForm extends StatefulWidget {
+  static Empresa? empresaGuardada;
+
+  @override
+  _CompanyInfoFormState createState() => _CompanyInfoFormState();
+}
+
+class _CompanyInfoFormState extends State<CompanyInfoForm> {
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController _nombreController = TextEditingController();
+  final TextEditingController _introduccionController = TextEditingController();
+  final TextEditingController _direccionController = TextEditingController();
+  final TextEditingController _telefonoController = TextEditingController();
+  final List<File> _imagenes = [];
+
+  Future<void> _submitForm() async {
+    if (_formKey.currentState!.validate()) {
+      try {
+        // Agregar la información de la empresa a Firestore
+        DocumentReference companyRef = await FirebaseFirestore.instance.collection('perfil_de_empresa').add({
+          'nombre': _nombreController.text,
+          'introduccion': _introduccionController.text,
+          'direccion': _direccionController.text,
+          'telefono': _telefonoController.text,
+        });
+
+        // Guardar la información en una variable estática
+        CompanyInfoForm.empresaGuardada = Empresa(
+          nombre: _nombreController.text,
+          introduccion: _introduccionController.text,
+          direccion: _direccionController.text,
+          telefono: _telefonoController.text,
+        );
+
+        // Subir las imágenes
+        await _uploadImages(companyRef.id);
+
+        // Mostrar un mensaje de éxito
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Información guardada con éxito')));
+
+        // Limpiar los campos después de guardar
+        _nombreController.clear();
+        _introduccionController.clear();
+        _direccionController.clear();
+        _telefonoController.clear();
+        setState(() {
+          _imagenes.clear();
+        });
+      } catch (e) {
+        // Manejo de errores
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al guardar la información')));
+      }
+    }
+  }
+
+  Future<void> _uploadImages(String docId) async {
+    // Implementación para subir imágenes
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Información de la Empresa'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            children: [
+              TextFormField(
+                controller: _nombreController,
+                decoration: InputDecoration(labelText: 'Nombre'),
+                validator: (value) {
+                  if (value!.isEmpty) {
+                    return 'Por favor ingrese el nombre de la empresa';
+                  }
+                  return null;
+                },
+              ),
+              TextFormField(
+                controller: _introduccionController,
+                decoration: InputDecoration(labelText: 'Introducción'),
+                validator: (value) {
+                  if (value!.isEmpty) {
+                    return 'Por favor ingrese una introducción';
+                  }
+                  return null;
+                },
+              ),
+              TextFormField(
+                controller: _direccionController,
+                decoration: InputDecoration(labelText: 'Dirección'),
+                validator: (value) {
+                  if (value!.isEmpty) {
+                    return 'Por favor ingrese la dirección';
+                  }
+                  return null;
+                },
+              ),
+              TextFormField(
+                controller: _telefonoController,
+                decoration: InputDecoration(labelText: 'Teléfono'),
+                validator: (value) {
+                  if (value!.isEmpty) {
+                    return 'Por favor ingrese el teléfono';
+                  }
+                  return null;
+                },
+              ),
+              // Añadir aquí el widget para cargar imágenes si es necesario
+              SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _submitForm,
+                child: Text('Guardar'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 
 class PublishedAdsPage extends StatelessWidget {
   @override
