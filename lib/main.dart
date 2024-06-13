@@ -21,7 +21,12 @@ class LoginApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Aplicación de inicio de sesión',
+      debugShowCheckedModeBanner: false, // Quitar el banner de debug
       home: LoginScreen(),
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+      ),
     );
   }
 }
@@ -125,7 +130,11 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       body: Padding(
         padding: EdgeInsets.all(20.0),
-        child: _isLoginForm ? _buildLoginForm() : _buildRegisterForm(),
+        child: Center(
+          child: SingleChildScrollView(
+            child: _isLoginForm ? _buildLoginForm() : _buildRegisterForm(),
+          ),
+        ),
       ),
     );
   }
@@ -134,11 +143,22 @@ class _LoginScreenState extends State<LoginScreen> {
     return Form(
       key: _loginFormKey,
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
+          Text(
+            'Bienvenido',
+            style: TextStyle(
+              fontSize: 24.0,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 30.0),
           TextFormField(
             controller: _emailController,
             decoration: InputDecoration(
               labelText: 'Correo electrónico',
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.email),
             ),
             validator: (value) {
               if (value!.isEmpty) {
@@ -153,6 +173,8 @@ class _LoginScreenState extends State<LoginScreen> {
             obscureText: true,
             decoration: InputDecoration(
               labelText: 'Contraseña',
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.lock),
             ),
             validator: (value) {
               if (value!.isEmpty) {
@@ -197,6 +219,10 @@ class _LoginScreenState extends State<LoginScreen> {
               }
             },
             child: Text('Iniciar sesión'),
+            style: ElevatedButton.styleFrom(
+              padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+              textStyle: TextStyle(fontSize: 18),
+            ),
           ),
           SizedBox(height: 10.0),
           TextButton(
@@ -216,11 +242,22 @@ class _LoginScreenState extends State<LoginScreen> {
     return Form(
       key: _registerFormKey,
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
+          Text(
+            'Crear cuenta',
+            style: TextStyle(
+              fontSize: 24.0,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 30.0),
           TextFormField(
             controller: _emailController,
             decoration: InputDecoration(
               labelText: 'Correo electrónico',
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.email),
             ),
             validator: (value) {
               if (value!.isEmpty) {
@@ -235,6 +272,8 @@ class _LoginScreenState extends State<LoginScreen> {
             obscureText: true,
             decoration: InputDecoration(
               labelText: 'Contraseña',
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.lock),
             ),
             validator: (value) {
               if (value!.isEmpty) {
@@ -248,6 +287,8 @@ class _LoginScreenState extends State<LoginScreen> {
             value: _selectedUserType,
             decoration: InputDecoration(
               labelText: 'Tipo de Usuario',
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.person),
             ),
             items: <String>['domiciliario', 'empresa'].map((String value) {
               return DropdownMenuItem<String>(
@@ -297,6 +338,10 @@ class _LoginScreenState extends State<LoginScreen> {
               }
             },
             child: Text('Registrarse'),
+            style: ElevatedButton.styleFrom(
+              padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+              textStyle: TextStyle(fontSize: 18),
+            ),
           ),
         ],
       ),

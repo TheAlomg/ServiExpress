@@ -1,6 +1,7 @@
+// ignore_for_file: prefer_const_constructors, deprecated_member_use, unnecessary_cast, use_key_in_widget_constructors, library_private_types_in_public_api, use_build_context_synchronously, prefer_const_constructors_in_immutables, file_names
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:servi_express/anuncio.dart';
 import 'Domimembresia.dart';
 import 'Domiconfiguracion.dart';
 
@@ -8,6 +9,18 @@ class DomiAnuncio extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+        appBarTheme: AppBarTheme(
+          color: Colors.blueAccent, toolbarTextStyle: TextTheme(
+            headline6: TextStyle(color: Colors.white, fontSize: 20),
+          ).bodyMedium, titleTextStyle: TextTheme(
+            titleLarge: TextStyle(color: Colors.white, fontSize: 20),
+          ).headline6,
+        ),
+      ),
       home: MyHomePage(),
     );
   }
@@ -20,24 +33,27 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   void applyToAd(String adId, int currentParticipants) async {
-    // Verificar si hay participantes disponibles
     if (currentParticipants > 0) {
-      // Reducir la cantidad de participantes en el anuncio
       await FirebaseFirestore.instance
           .collection('anuncios')
           .doc(adId)
           .update({'participants': currentParticipants - 1});
 
-      // Registrar la aplicación del usuario
       await FirebaseFirestore.instance.collection('aplicaciones').add({
         'adId': adId,
-        'userId': 'someUserId', // ID del usuario actual
+        'userId': 'someUserId',
         'timestamp': FieldValue.serverTimestamp(),
       });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Aplicación exitosa')),
+      );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('No hay más participantes disponibles para este anuncio'),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No hay más participantes disponibles para este anuncio'),
+        ),
+      );
     }
   }
 
@@ -142,10 +158,16 @@ class _AdCardState extends State<AdCard> {
   @override
   Widget build(BuildContext context) {
     return Card(
+      margin: EdgeInsets.all(8.0),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
       child: Column(
         children: <Widget>[
           ListTile(
-            title: Text(widget.ad['name']),
+            title: Text(widget.ad['name'],
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            trailing: Icon(_isExpanded
+                ? Icons.expand_less
+                : Icons.expand_more),
             onTap: () {
               setState(() {
                 _isExpanded = !_isExpanded;
@@ -154,13 +176,16 @@ class _AdCardState extends State<AdCard> {
           ),
           if (_isExpanded)
             Padding(
-              padding: EdgeInsets.all(16.0),
+              padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   Text('Contenido: ${widget.ad['content']}'),
+                  SizedBox(height: 4.0),
                   Text('Cantidad de Participantes: ${widget.ad['participants']}'),
+                  SizedBox(height: 4.0),
                   Text('Valor: ${widget.ad['value']}'),
+                  SizedBox(height: 4.0),
                   Text('Tipo de Vehículo: ${widget.ad['vehicleType']}'),
                 ],
               ),
@@ -169,6 +194,11 @@ class _AdCardState extends State<AdCard> {
             children: <Widget>[
               ElevatedButton(
                 onPressed: widget.onApply,
+                style: ElevatedButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10.0),
+                  ),
+                ),
                 child: Text('Aplicar'),
               ),
             ],
@@ -186,63 +216,69 @@ class ProfilePage extends StatelessWidget {
         title: Text('Perfil'),
       ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => ProfileDetailPage()),
-                );
-              },
-              child: Text('Perfil'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => DomiciliarioInfoForm()),
-                );
-              },
-              child: Text('Editar Perfil'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => ApplicationsPage()),
-                );
-              },
-              child: Text('Aplicaciones Terminadas'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                var membership = await _fetchMembership();
-                if (membership != null) {
-                  showDialog(
-                    context: context,
-                    builder: (context) {
-                      return AlertDialog(
-                        title: Text('Membresía Actual'),
-                        content: Text(
-                            'Tipo de Membresía: ${membership['title']}\nEstado: ${membership['estado'] ?? 'Activo'}'),
-                        actions: <Widget>[
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                            },
-                            child: Text('Cerrar'),
-                          ),
-                        ],
-                      );
-                    },
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => ProfileDetailPage()),
                   );
-                }
-              },
-              child: Text('Ver Membresía'),
-            ),
-          ],
+                },
+                child: Text('Perfil'),
+              ),
+              SizedBox(height: 10),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => DomiciliarioInfoForm()),
+                  );
+                },
+                child: Text('Editar Perfil'),
+              ),
+              SizedBox(height: 10),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => ApplicationsPage()),
+                  );
+                },
+                child: Text('Aplicaciones Terminadas'),
+              ),
+              SizedBox(height: 10),
+              ElevatedButton(
+                onPressed: () async {
+                  var membership = await _fetchMembership();
+                  if (membership != null) {
+                    showDialog(
+                      context: context,
+                      builder: (context) {
+                        return AlertDialog(
+                          title: Text('Membresía Actual'),
+                          content: Text(
+                              'Tipo de Membresía: ${membership['title']}\nEstado: ${membership['estado'] ?? 'Activo'}'),
+                          actions: <Widget>[
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pop(context);
+                              },
+                              child: Text('Cerrar'),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  }
+                },
+                child: Text('Ver Membresía'),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -251,7 +287,7 @@ class ProfilePage extends StatelessWidget {
   Future<Map<String, dynamic>?> _fetchMembership() async {
     var snapshot = await FirebaseFirestore.instance
         .collection('membresia_domiciliarios')
-        .doc('userId') // Reemplaza 'userId' con el ID real del usuario
+        .doc('userId')
         .get();
     if (snapshot.exists) {
       return snapshot.data();
@@ -259,7 +295,6 @@ class ProfilePage extends StatelessWidget {
     return null;
   }
 }
-
 
 class ProfileDetailPage extends StatelessWidget {
   @override
@@ -271,7 +306,7 @@ class ProfileDetailPage extends StatelessWidget {
       body: FutureBuilder<DocumentSnapshot>(
         future: FirebaseFirestore.instance
             .collection('perfil_domiciliario')
-            .doc('userId') // Reemplaza 'userId' con el ID real del usuario
+            .doc('userId')
             .get(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
@@ -284,8 +319,11 @@ class ProfileDetailPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text('Nombre: ${data['nombre']}', style: TextStyle(fontSize: 18)),
+                SizedBox(height: 8),
                 Text('Matricula: ${data['introduccion']}', style: TextStyle(fontSize: 18)),
+                SizedBox(height: 8),
                 Text('Tipo de Vehiculo: ${data['direccion']}', style: TextStyle(fontSize: 18)),
+                SizedBox(height: 8),
                 Text('Teléfono: ${data['telefono']}', style: TextStyle(fontSize: 18)),
               ],
             ),
@@ -336,10 +374,9 @@ class _DomiciliarioInfoFormState extends State<DomiciliarioInfoForm> {
         );
       });
 
-      // Guardar en Firestore
       await FirebaseFirestore.instance
           .collection('perfil_domiciliario')
-          .doc('userId') // Reemplaza 'userId' con el ID real del usuario
+          .doc('userId')
           .set({
         'nombre': _nombre,
         'introduccion': _introduccion,
@@ -375,6 +412,7 @@ class _DomiciliarioInfoFormState extends State<DomiciliarioInfoForm> {
                   _nombre = value!;
                 },
               ),
+              SizedBox(height: 10),
               TextFormField(
                 decoration: InputDecoration(labelText: 'Matricula'),
                 validator: (value) {
@@ -387,6 +425,7 @@ class _DomiciliarioInfoFormState extends State<DomiciliarioInfoForm> {
                   _introduccion = value!;
                 },
               ),
+              SizedBox(height: 10),
               TextFormField(
                 decoration: InputDecoration(labelText: 'Tipo de Vehiculo'),
                 validator: (value) {
@@ -399,6 +438,7 @@ class _DomiciliarioInfoFormState extends State<DomiciliarioInfoForm> {
                   _direccion = value!;
                 },
               ),
+              SizedBox(height: 10),
               TextFormField(
                 decoration: InputDecoration(labelText: 'Teléfono'),
                 validator: (value) {
@@ -414,6 +454,11 @@ class _DomiciliarioInfoFormState extends State<DomiciliarioInfoForm> {
               SizedBox(height: 16.0),
               ElevatedButton(
                 onPressed: _submitForm,
+                style: ElevatedButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10.0),
+                  ),
+                ),
                 child: Text('Guardar'),
               ),
             ],

@@ -8,6 +8,7 @@ class SettingsPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text('Configuración'),
+        backgroundColor: Colors.teal,
       ),
       body: Center(
         child: Column(
@@ -15,8 +16,15 @@ class SettingsPage extends StatelessWidget {
           children: <Widget>[
             SizedBox(height: 20.0),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.teal,
+                padding: EdgeInsets.symmetric(horizontal: 32.0, vertical: 16.0),
+                textStyle: TextStyle(fontSize: 18.0),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10.0),
+                ),
+              ),
               onPressed: () {
-                // Lógica para cambiar la contraseña
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => ChangePasswordPage()),
@@ -26,8 +34,15 @@ class SettingsPage extends StatelessWidget {
             ),
             SizedBox(height: 20.0),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                padding: EdgeInsets.symmetric(horizontal: 32.0, vertical: 16.0),
+                textStyle: TextStyle(fontSize: 18.0),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10.0),
+                ),
+              ),
               onPressed: () {
-                // Lógica para eliminar la cuenta
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => DeleteAccountPage()),
@@ -85,6 +100,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Cambiar contraseña'),
+        backgroundColor: Colors.teal,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -124,6 +140,14 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
               ),
               SizedBox(height: 20),
               ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.teal,
+                  padding: EdgeInsets.symmetric(vertical: 16.0),
+                  textStyle: TextStyle(fontSize: 18.0),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10.0),
+                  ),
+                ),
                 onPressed: _changePassword,
                 child: Text('Cambiar contraseña'),
               ),
@@ -197,7 +221,7 @@ class DeleteAccountPage extends StatelessWidget {
                 Navigator.pop(context);
                 _deleteAccount(context);
               },
-              child: Text('Eliminar'),
+              child: Text('Eliminar', style: TextStyle(color: Colors.red)),
             ),
           ],
         );
@@ -210,9 +234,18 @@ class DeleteAccountPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text('Eliminar cuenta'),
+        backgroundColor: Colors.teal,
       ),
       body: Center(
         child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red,
+            padding: EdgeInsets.symmetric(horizontal: 32.0, vertical: 16.0),
+            textStyle: TextStyle(fontSize: 18.0),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10.0),
+            ),
+          ),
           onPressed: () => _confirmDeleteAccount(context),
           child: Text('Eliminar cuenta'),
         ),

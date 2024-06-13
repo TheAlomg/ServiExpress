@@ -1,3 +1,6 @@
+// ignore_for_file: prefer_const_constructors
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -10,6 +13,10 @@ class Anuncio extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        visualDensity: VisualDensity.adaptivePlatformDensity, colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.blue).copyWith(secondary: Colors.blueAccent),
+      ),
       home: MyHomePage(),
     );
   }
@@ -60,7 +67,7 @@ class _MyHomePageState extends State<MyHomePage> {
               onPressed: () {
                 showConfirmationDialog(context, adId);
               },
-              child: Text('Eliminar'),
+              child: Text('Eliminar', style: TextStyle(color: Colors.red)),
             ),
           ],
         );
@@ -91,7 +98,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   SnackBar(content: Text('Anuncio eliminado con éxito')),
                 );
               },
-              child: Text('Sí'),
+              child: Text('Sí', style: TextStyle(color: Colors.red)),
             ),
           ],
         );
@@ -151,11 +158,18 @@ class _MyHomePageState extends State<MyHomePage> {
           padding: EdgeInsets.zero,
           children: <Widget>[
             DrawerHeader(
-              decoration: BoxDecoration(color: Colors.blue),
+              decoration: BoxDecoration(
+                color: Colors.blue,
+                image: DecorationImage(
+                  image: AssetImage('assets/drawer_header_background.png'),
+                  fit: BoxFit.cover,
+                ),
+              ),
               child: Text('Menú',
                   style: TextStyle(color: Colors.white, fontSize: 24)),
             ),
             ListTile(
+              leading: Icon(Icons.payment),
               title: Text('Comprar Membresía'),
               onTap: () {
                 Navigator.pop(context);
@@ -166,6 +180,7 @@ class _MyHomePageState extends State<MyHomePage> {
               },
             ),
             ListTile(
+              leading: Icon(Icons.add_box),
               title: Text('Crear Anuncio'),
               onTap: () {
                 Navigator.pop(context);
@@ -177,6 +192,7 @@ class _MyHomePageState extends State<MyHomePage> {
               },
             ),
             ListTile(
+              leading: Icon(Icons.settings),
               title: Text('Configuraciones'),
               onTap: () {
                 Navigator.pop(context);
@@ -202,23 +218,38 @@ class AnuncioCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Column(
-        children: <Widget>[
-          ListTile(title: Text(titulo)),
-          ButtonBar(
-            children: <Widget>[
-              ElevatedButton(
-                onPressed: onPressedVerMas,
-                child: Text('Ver más'),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15.0),
+      ),
+      elevation: 5,
+      margin: EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+      child: Padding(
+        padding: const EdgeInsets.all(10.0),
+        child: Column(
+          children: <Widget>[
+            ListTile(
+              title: Text(
+                titulo,
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
               ),
-            ],
-          ),
-        ],
+            ),
+            ButtonBar(
+              children: <Widget>[
+                ElevatedButton(
+                  onPressed: onPressedVerMas,
+                  child: Text('Ver más'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 }
-
 class CreateAdPage extends StatefulWidget {
   final Function(String, String, int, double, String) publishAd;
 
@@ -261,75 +292,123 @@ class _CreateAdPageState extends State<CreateAdPage> {
       ),
       body: Padding(
         padding: EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            TextField(
-              controller: _nameController,
-              decoration: InputDecoration(labelText: 'Nombre'),
-              onChanged: (value) {
-                _checkButtonState();
-              },
-            ),
-            TextField(
-              controller: _contentController,
-              decoration: InputDecoration(labelText: 'Contenido del Anuncio'),
-              onChanged: (value) {
-                _checkButtonState();
-              },
-            ),
-            TextField(
-              controller: _participantsController,
-              decoration:
-                  InputDecoration(labelText: 'Cantidad de Participantes'),
-              keyboardType: TextInputType.number,
-              onChanged: (value) {
-                _checkButtonState();
-              },
-            ),
-            TextField(
-              controller: _valueController,
-              decoration: InputDecoration(labelText: 'Valor'),
-              keyboardType: TextInputType.number,
-              onChanged: (value) {
-                _checkButtonState();
-              },
-            ),
-            DropdownButton<String>(
-              value: _selectedVehicleType,
-              items: <String>['Carro', 'Moto', 'Bicicleta'].map((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value),
-                );
-              }).toList(),
-              onChanged: (String? newValue) {
-                setState(() {
-                  _selectedVehicleType = newValue!;
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              TextField(
+                controller: _nameController,
+                decoration: InputDecoration(
+                  labelText: 'Nombre',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey[200],
+                ),
+                onChanged: (value) {
                   _checkButtonState();
-                });
-              },
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _isButtonEnabled
-                  ? () {
-                      String name = _nameController.text;
-                      String content = _contentController.text;
-                      int participants =
-                          int.parse(_participantsController.text);
-                      double value = double.parse(_valueController.text);
-                      String vehicleType = _selectedVehicleType;
+                },
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: _contentController,
+                decoration: InputDecoration(
+                  labelText: 'Contenido del Anuncio',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey[200],
+                ),
+                onChanged: (value) {
+                  _checkButtonState();
+                },
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: _participantsController,
+                decoration: InputDecoration(
+                  labelText: 'Cantidad de Participantes',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey[200],
+                ),
+                keyboardType: TextInputType.number,
+                onChanged: (value) {
+                  _checkButtonState();
+                },
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: _valueController,
+                decoration: InputDecoration(
+                  labelText: 'Valor',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey[200],
+                ),
+                keyboardType: TextInputType.number,
+                onChanged: (value) {
+                  _checkButtonState();
+                },
+              ),
+              SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: _selectedVehicleType,
+                decoration: InputDecoration(
+                  labelText: 'Tipo de Vehículo',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey[200],
+                ),
+                items: <String>['Carro', 'Moto', 'Bicicleta'].map((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    _selectedVehicleType = newValue!;
+                    _checkButtonState();
+                  });
+                },
+              ),
+              SizedBox(height: 30),
+              ElevatedButton(
+                onPressed: _isButtonEnabled
+                    ? () {
+                        String name = _nameController.text;
+                        String content = _contentController.text;
+                        int participants = int.parse(_participantsController.text);
+                        double value = double.parse(_valueController.text);
+                        String vehicleType = _selectedVehicleType;
 
-                      widget.publishAd(
-                          name, content, participants, value, vehicleType);
+                        widget.publishAd(
+                            name, content, participants, value, vehicleType);
 
-                      Navigator.pop(context);
-                    }
-                  : null,
-              child: Text('Publicar Anuncio'),
-            ),
-          ],
+                        Navigator.pop(context);
+                      }
+                    : null,
+                child: Text('Publicar Anuncio'),
+                style: ElevatedButton.styleFrom(
+                  foregroundColor: Colors.white, backgroundColor: _isButtonEnabled ? Colors.blue : Colors.grey,
+                  padding: EdgeInsets.symmetric(vertical: 15),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                  textStyle: TextStyle(fontSize: 18),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -371,7 +450,6 @@ class Empresa {
     );
   }
 }
-
 class ProfilePage extends StatefulWidget {
   static Empresa? empresaGuardada;
 
@@ -381,11 +459,21 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   Future<Map<String, dynamic>?> _fetchMembership() async {
-    var querySnapshot =
-        await FirebaseFirestore.instance.collection('membresia_empresas').get();
-    return querySnapshot.docs.isNotEmpty
-        ? querySnapshot.docs.first.data()
-        : null;
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Debes iniciar sesión para ver tu membresía.')),
+      );
+      return null;
+    }
+
+    var docSnapshot = await FirebaseFirestore.instance
+        .collection('membresia_empresas')
+        .doc(user.uid)
+        .get();
+
+    return docSnapshot.exists ? docSnapshot.data() : null;
   }
 
   Future<void> _fetchEmpresaGuardada() async {
@@ -414,6 +502,7 @@ class _ProfilePageState extends State<ProfilePage> {
       body: Padding(
         padding: EdgeInsets.all(16.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             ElevatedButton(
               onPressed: () {
@@ -423,7 +512,15 @@ class _ProfilePageState extends State<ProfilePage> {
                 );
               },
               child: Text('Editar Información de Empresa'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(vertical: 15),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
             ),
+            SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {
                 Navigator.push(
@@ -432,7 +529,15 @@ class _ProfilePageState extends State<ProfilePage> {
                 );
               },
               child: Text('Ver Anuncios Publicados'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(vertical: 15),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
             ),
+            SizedBox(height: 16),
             ElevatedButton(
               onPressed: () async {
                 var membership = await _fetchMembership();
@@ -462,25 +567,38 @@ class _ProfilePageState extends State<ProfilePage> {
                 }
               },
               child: Text('Ver Membresía'),
-            ),
-            if (ProfilePage.empresaGuardada != null)
-              Column(
-                children: [
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => CompanyDetailsPage(
-                            empresa: ProfilePage.empresaGuardada!,
-                          ),
-                        ),
-                      );
-                    },
-                    child: Text('Ver Información de la Empresa'),
-                  ),
-                ],
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(vertical: 15),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
+            ),
+            if (ProfilePage.empresaGuardada != null) ...[
+              SizedBox(height: 16),
+              Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: ListTile(
+                  title: Text('Información de la Empresa'),
+                  subtitle: Text(ProfilePage.empresaGuardada!.nombre),
+                  trailing: Icon(Icons.arrow_forward),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CompanyDetailsPage(
+                          empresa: ProfilePage.empresaGuardada!,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -496,8 +614,7 @@ class CompanyInfoPage extends StatefulWidget {
 
 class _CompanyInfoPageState extends State<CompanyInfoPage> {
   final TextEditingController _nombreController = TextEditingController();
-  final TextEditingController _introduccionController =
-      TextEditingController();
+  final TextEditingController _introduccionController = TextEditingController();
   final TextEditingController _direccionController = TextEditingController();
   final TextEditingController _telefonoController = TextEditingController();
   File? _imageFile;
@@ -525,7 +642,6 @@ class _CompanyInfoPageState extends State<CompanyInfoPage> {
         imageUrl = await snapshot.ref.getDownloadURL();
       } catch (e) {
         print('Error uploading image: $e');
-        // Manejo de errores de subida de imagen
       }
     }
 
@@ -537,10 +653,7 @@ class _CompanyInfoPageState extends State<CompanyInfoPage> {
       imagenUrl: imageUrl,
     );
 
-    await FirebaseFirestore.instance
-        .collection('empresas')
-        .doc('empresa1')
-        .set(empresa.toMap());
+    await FirebaseFirestore.instance.collection('empresas').doc('empresa1').set(empresa.toMap());
 
     setState(() {
       ProfilePage.empresaGuardada = empresa;
@@ -566,29 +679,55 @@ class _CompanyInfoPageState extends State<CompanyInfoPage> {
                     : ProfilePage.empresaGuardada?.imagenUrl != null
                         ? NetworkImage(ProfilePage.empresaGuardada!.imagenUrl!)
                         : AssetImage('assets/foto_perfil.png') as ImageProvider,
-                child: Icon(
-                  Icons.camera_alt,
-                  size: 50,
-                  color: Colors.white,
+                child: Align(
+                  alignment: Alignment.bottomRight,
+                  child: Icon(
+                    Icons.camera_alt,
+                    size: 30,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),
             SizedBox(height: 20),
             TextField(
               controller: _nombreController,
-              decoration: InputDecoration(labelText: 'Nombre de la Empresa'),
+              decoration: InputDecoration(
+                labelText: 'Nombre de la Empresa',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
             ),
+            SizedBox(height: 10),
             TextField(
               controller: _introduccionController,
-              decoration: InputDecoration(labelText: 'Introducción'),
+              decoration: InputDecoration(
+                labelText: 'Introducción',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
             ),
+            SizedBox(height: 10),
             TextField(
               controller: _direccionController,
-              decoration: InputDecoration(labelText: 'Dirección'),
+              decoration: InputDecoration(
+                labelText: 'Dirección',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
             ),
+            SizedBox(height: 10),
             TextField(
               controller: _telefonoController,
-              decoration: InputDecoration(labelText: 'Teléfono'),
+              decoration: InputDecoration(
+                labelText: 'Teléfono',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
             ),
             SizedBox(height: 20),
             ElevatedButton(
@@ -597,6 +736,13 @@ class _CompanyInfoPageState extends State<CompanyInfoPage> {
                 Navigator.pop(context);
               },
               child: Text('Guardar'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                padding: EdgeInsets.symmetric(vertical: 15),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
             ),
           ],
         ),
@@ -604,7 +750,6 @@ class _CompanyInfoPageState extends State<CompanyInfoPage> {
     );
   }
 }
-
 class CompanyDetailsPage extends StatelessWidget {
   final Empresa empresa;
 
@@ -621,11 +766,17 @@ class CompanyDetailsPage extends StatelessWidget {
         child: ListView(
           children: <Widget>[
             if (empresa.imagenUrl != null)
-              Image.network(empresa.imagenUrl!),
+              Center(
+                child: Image.network(
+                  empresa.imagenUrl!,
+                  height: 200,
+                  fit: BoxFit.cover,
+                ),
+              ),
             SizedBox(height: 20),
             Text(
               'Nombre: ${empresa.nombre}',
-              style: TextStyle(fontSize: 24),
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 10),
             Text(
@@ -648,11 +799,9 @@ class CompanyDetailsPage extends StatelessWidget {
     );
   }
 }
-
 class PublishedAdsPage extends StatelessWidget {
   Future<List<Map<String, dynamic>>> _fetchAds() async {
-    var querySnapshot =
-        await FirebaseFirestore.instance.collection('anuncios').get();
+    var querySnapshot = await FirebaseFirestore.instance.collection('anuncios').get();
     return querySnapshot.docs.map((doc) => doc.data()).toList();
   }
 
@@ -673,9 +822,20 @@ class PublishedAdsPage extends StatelessWidget {
             itemCount: ads.length,
             itemBuilder: (context, index) {
               var ad = ads[index];
-              return ListTile(
-                title: Text(ad['name']),
-                subtitle: Text(ad['content']),
+              return Card(
+                elevation: 4,
+                margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                child: ListTile(
+                  title: Text(
+                    ad['name'],
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(ad['content']),
+                  trailing: Icon(Icons.arrow_forward),
+                  onTap: () {
+                    // Acciones al tocar el anuncio
+                  },
+                ),
               );
             },
           );
@@ -684,4 +844,3 @@ class PublishedAdsPage extends StatelessWidget {
     );
   }
 }
-

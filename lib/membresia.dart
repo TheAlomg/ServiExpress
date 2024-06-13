@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; // Importar Firebase Firestore
-
+import 'package:firebase_auth/firebase_auth.dart'; // Importar Firebase Auth
 
 class MyApp extends StatelessWidget {
   @override
@@ -18,11 +18,20 @@ class MyApp extends StatelessWidget {
 class MembershipPage extends StatelessWidget {
   Future<void> _buyMembership(
       BuildContext context, String title, int price) async {
-    // Verificar si el usuario ya ha comprado una membresía
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Debes iniciar sesión para comprar una membresía.')),
+      );
+      return;
+    }
+
     var snapshot = await FirebaseFirestore.instance
         .collection('membresia_empresas')
-        .doc('userId')
+        .doc(user.uid)
         .get();
+
     if (snapshot.exists) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Ya has comprado una membresía.')),
@@ -30,10 +39,9 @@ class MembershipPage extends StatelessWidget {
       return;
     }
 
-    // Registrar la compra de la membresía en Firestore
     await FirebaseFirestore.instance
         .collection('membresia_empresas')
-        .doc('userId')
+        .doc(user.uid)
         .set({
       'title': title,
       'price': price,
