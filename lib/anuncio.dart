@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'membresia.dart';
-import 'configuracion.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'membresia.dart';
+import 'configuracion.dart';
 
 class Anuncio extends StatelessWidget {
   @override
@@ -32,7 +32,7 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-  void showAdDetailsDialog(BuildContext context, Map<String, dynamic> ad) {
+  void showAdDetailsDialog(BuildContext context, Map<String, dynamic> ad, String adId) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -56,10 +56,55 @@ class _MyHomePageState extends State<MyHomePage> {
               },
               child: Text('Cerrar'),
             ),
+            TextButton(
+              onPressed: () {
+                showConfirmationDialog(context, adId);
+              },
+              child: Text('Eliminar'),
+            ),
           ],
         );
       },
     );
+  }
+
+  void showConfirmationDialog(BuildContext context, String adId) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Atención'),
+          content: Text('¿Está seguro de que desea eliminar este anuncio?'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // Cerrar el diálogo de confirmación
+              },
+              child: Text('No'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(context); // Cerrar el diálogo de confirmación
+                await deleteAd(adId); // Eliminar el anuncio de la base de datos
+                Navigator.pop(context); // Cerrar el diálogo de detalles
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Anuncio eliminado con éxito')),
+                );
+              },
+              child: Text('Sí'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> deleteAd(String adId) async {
+    try {
+      await FirebaseFirestore.instance.collection('anuncios').doc(adId).delete();
+    } catch (e) {
+      print('Error al eliminar el anuncio: $e');
+    }
   }
 
   @override
@@ -90,10 +135,11 @@ class _MyHomePageState extends State<MyHomePage> {
             itemCount: ads.length,
             itemBuilder: (context, index) {
               var ad = ads[index].data() as Map<String, dynamic>;
+              String adId = ads[index].id;
               return AnuncioCard(
                 titulo: ad['name'],
                 onPressedVerMas: () {
-                  showAdDetailsDialog(context, ad);
+                  showAdDetailsDialog(context, ad, adId);
                 },
               );
             },
@@ -281,7 +327,7 @@ class _CreateAdPageState extends State<CreateAdPage> {
                       Navigator.pop(context);
                     }
                   : null,
-              child: Text('Publicar'),
+              child: Text('Publicar Anuncio'),
             ),
           ],
         ),
@@ -290,65 +336,93 @@ class _CreateAdPageState extends State<CreateAdPage> {
   }
 }
 
-class ProfilePage extends StatelessWidget {
+class Empresa {
+  final String nombre;
+  final String introduccion;
+  final String direccion;
+  final String telefono;
+  final String? imagenUrl;
+
+  Empresa({
+    required this.nombre,
+    required this.introduccion,
+    required this.direccion,
+    required this.telefono,
+    this.imagenUrl,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'nombre': nombre,
+      'introduccion': introduccion,
+      'direccion': direccion,
+      'telefono': telefono,
+      'imagenUrl': imagenUrl,
+    };
+  }
+
+  static Empresa fromMap(Map<String, dynamic> map) {
+    return Empresa(
+      nombre: map['nombre'],
+      introduccion: map['introduccion'],
+      direccion: map['direccion'],
+      telefono: map['telefono'],
+      imagenUrl: map['imagenUrl'],
+    );
+  }
+}
+
+class ProfilePage extends StatefulWidget {
+  static Empresa? empresaGuardada;
+
+  @override
+  _ProfilePageState createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  Future<Map<String, dynamic>?> _fetchMembership() async {
+    var querySnapshot =
+        await FirebaseFirestore.instance.collection('membresia_empresas').get();
+    return querySnapshot.docs.isNotEmpty
+        ? querySnapshot.docs.first.data()
+        : null;
+  }
+
+  Future<void> _fetchEmpresaGuardada() async {
+    var docSnapshot =
+        await FirebaseFirestore.instance.collection('empresas').doc('empresa1').get();
+    if (docSnapshot.exists) {
+      setState(() {
+        ProfilePage.empresaGuardada =
+            Empresa.fromMap(docSnapshot.data() as Map<String, dynamic>);
+      });
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchEmpresaGuardada();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('Perfil'),
       ),
-      body: Center(
+      body: Padding(
+        padding: EdgeInsets.all(16.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            CircleAvatar(
-              radius: 80,
-              backgroundImage: AssetImage('assets/foto_perfil.png'),
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                if (CompanyInfoForm.empresaGuardada != null) {
-                  showDialog(
-                    context: context,
-                    builder: (context) {
-                      return AlertDialog(
-                        title: Text('Información de la Empresa'),
-                        content: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text('Nombre: ${CompanyInfoForm.empresaGuardada!.nombre}'),
-                            Text('Introducción: ${CompanyInfoForm.empresaGuardada!.introduccion}'),
-                            Text('Dirección: ${CompanyInfoForm.empresaGuardada!.direccion}'),
-                            Text('Teléfono: ${CompanyInfoForm.empresaGuardada!.telefono}'),
-                          ],
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                            },
-                            child: Text('Cerrar'),
-                          ),
-                        ],
-                      );
-                    },
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('No hay información de empresa guardada')));
-                }
-              },
-              child: Text('Perfil'),
-            ),
             ElevatedButton(
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => CompanyInfoForm()),
+                  MaterialPageRoute(builder: (context) => CompanyInfoPage()),
                 );
               },
-              child: Text('Editar Perfil'),
+              child: Text('Editar Información de Empresa'),
             ),
             ElevatedButton(
               onPressed: () {
@@ -357,7 +431,7 @@ class ProfilePage extends StatelessWidget {
                   MaterialPageRoute(builder: (context) => PublishedAdsPage()),
                 );
               },
-              child: Text('Anuncios publicados'),
+              child: Text('Ver Anuncios Publicados'),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -369,7 +443,7 @@ class ProfilePage extends StatelessWidget {
                       return AlertDialog(
                         title: Text('Membresía Actual'),
                         content: Text(
-                            'Tipo de Membresía: ${membership['tipo']}\nEstado: ${membership['estado']}'),
+                            'Tipo de Membresía: ${membership['title']}\nPrecio: \$${membership['price']} COP\nEstado: ${membership['estado'] ?? 'Activo'}'),
                         actions: <Widget>[
                           TextButton(
                             onPressed: () {
@@ -381,45 +455,98 @@ class ProfilePage extends StatelessWidget {
                       );
                     },
                   );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('No tienes una membresía activa.')),
+                  );
                 }
               },
               child: Text('Ver Membresía'),
             ),
+            if (ProfilePage.empresaGuardada != null)
+              Column(
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => CompanyDetailsPage(
+                            empresa: ProfilePage.empresaGuardada!,
+                          ),
+                        ),
+                      );
+                    },
+                    child: Text('Ver Información de la Empresa'),
+                  ),
+                ],
+              ),
           ],
         ),
       ),
     );
   }
+}
 
-  Future<Map<String, dynamic>?> _fetchMembership() async {
-    var snapshot = await FirebaseFirestore.instance
-        .collection('membresias')
-        .doc('userId')
-        .get();
-    if (snapshot.exists) {
-      return snapshot.data();
-    }
-    return null;
+
+class CompanyInfoPage extends StatefulWidget {
+  @override
+  _CompanyInfoPageState createState() => _CompanyInfoPageState();
+}
+
+class _CompanyInfoPageState extends State<CompanyInfoPage> {
+  final TextEditingController _nombreController = TextEditingController();
+  final TextEditingController _introduccionController =
+      TextEditingController();
+  final TextEditingController _direccionController = TextEditingController();
+  final TextEditingController _telefonoController = TextEditingController();
+  File? _imageFile;
+
+  final picker = ImagePicker();
+
+  Future<void> _pickImage() async {
+    final pickedFile = await picker.getImage(source: ImageSource.gallery);
+
+    setState(() {
+      if (pickedFile != null) {
+        _imageFile = File(pickedFile.path);
+      }
+    });
   }
-}
 
+  Future<void> _saveEmpresa() async {
+    String? imageUrl;
+    if (_imageFile != null) {
+      try {
+        var snapshot = await FirebaseStorage.instance
+            .ref()
+            .child('imagenes/${DateTime.now().millisecondsSinceEpoch}')
+            .putFile(_imageFile!);
+        imageUrl = await snapshot.ref.getDownloadURL();
+      } catch (e) {
+        print('Error uploading image: $e');
+        // Manejo de errores de subida de imagen
+      }
+    }
 
-class Empresa {
-  final String nombre;
-  final String introduccion;
-  final String direccion;
-  final String telefono;
+    Empresa empresa = Empresa(
+      nombre: _nombreController.text,
+      introduccion: _introduccionController.text,
+      direccion: _direccionController.text,
+      telefono: _telefonoController.text,
+      imagenUrl: imageUrl,
+    );
 
-  Empresa({
-    required this.nombre,
-    required this.introduccion,
-    required this.direccion,
-    required this.telefono,
-  });
-}
+    await FirebaseFirestore.instance
+        .collection('empresas')
+        .doc('empresa1')
+        .set(empresa.toMap());
 
+    setState(() {
+      ProfilePage.empresaGuardada = empresa;
+    });
+  }
 
-class CompanyInfoPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -428,168 +555,124 @@ class CompanyInfoPage extends StatelessWidget {
       ),
       body: Padding(
         padding: EdgeInsets.all(16.0),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              Text(
-                'Información de la Empresa',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        child: ListView(
+          children: <Widget>[
+            GestureDetector(
+              onTap: _pickImage,
+              child: CircleAvatar(
+                radius: 80,
+                backgroundImage: _imageFile != null
+                    ? FileImage(_imageFile!)
+                    : ProfilePage.empresaGuardada?.imagenUrl != null
+                        ? NetworkImage(ProfilePage.empresaGuardada!.imagenUrl!)
+                        : AssetImage('assets/foto_perfil.png') as ImageProvider,
+                child: Icon(
+                  Icons.camera_alt,
+                  size: 50,
+                  color: Colors.white,
+                ),
               ),
-              SizedBox(height: 20),
-              CompanyInfoForm(), // Llamada a la clase interna
-            ],
-          ),
+            ),
+            SizedBox(height: 20),
+            TextField(
+              controller: _nombreController,
+              decoration: InputDecoration(labelText: 'Nombre de la Empresa'),
+            ),
+            TextField(
+              controller: _introduccionController,
+              decoration: InputDecoration(labelText: 'Introducción'),
+            ),
+            TextField(
+              controller: _direccionController,
+              decoration: InputDecoration(labelText: 'Dirección'),
+            ),
+            TextField(
+              controller: _telefonoController,
+              decoration: InputDecoration(labelText: 'Teléfono'),
+            ),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () async {
+                await _saveEmpresa();
+                Navigator.pop(context);
+              },
+              child: Text('Guardar'),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class CompanyInfoForm extends StatefulWidget {
-  static Empresa? empresaGuardada;
+class CompanyDetailsPage extends StatelessWidget {
+  final Empresa empresa;
 
-  @override
-  _CompanyInfoFormState createState() => _CompanyInfoFormState();
-}
-
-class _CompanyInfoFormState extends State<CompanyInfoForm> {
-  final _formKey = GlobalKey<FormState>();
-  final TextEditingController _nombreController = TextEditingController();
-  final TextEditingController _introduccionController = TextEditingController();
-  final TextEditingController _direccionController = TextEditingController();
-  final TextEditingController _telefonoController = TextEditingController();
-  final List<File> _imagenes = [];
-
-  Future<void> _submitForm() async {
-    if (_formKey.currentState!.validate()) {
-      try {
-        // Agregar la información de la empresa a Firestore
-        DocumentReference companyRef = await FirebaseFirestore.instance.collection('perfil_de_empresa').add({
-          'nombre': _nombreController.text,
-          'introduccion': _introduccionController.text,
-          'direccion': _direccionController.text,
-          'telefono': _telefonoController.text,
-        });
-
-        // Guardar la información en una variable estática
-        CompanyInfoForm.empresaGuardada = Empresa(
-          nombre: _nombreController.text,
-          introduccion: _introduccionController.text,
-          direccion: _direccionController.text,
-          telefono: _telefonoController.text,
-        );
-
-        // Subir las imágenes
-        await _uploadImages(companyRef.id);
-
-        // Mostrar un mensaje de éxito
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Información guardada con éxito')));
-
-        // Limpiar los campos después de guardar
-        _nombreController.clear();
-        _introduccionController.clear();
-        _direccionController.clear();
-        _telefonoController.clear();
-        setState(() {
-          _imagenes.clear();
-        });
-      } catch (e) {
-        // Manejo de errores
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al guardar la información')));
-      }
-    }
-  }
-
-  Future<void> _uploadImages(String docId) async {
-    // Implementación para subir imágenes
-  }
+  CompanyDetailsPage({required this.empresa});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Información de la Empresa'),
+        title: Text('Detalles de la Empresa'),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              TextFormField(
-                controller: _nombreController,
-                decoration: InputDecoration(labelText: 'Nombre'),
-                validator: (value) {
-                  if (value!.isEmpty) {
-                    return 'Por favor ingrese el nombre de la empresa';
-                  }
-                  return null;
-                },
-              ),
-              TextFormField(
-                controller: _introduccionController,
-                decoration: InputDecoration(labelText: 'Introducción'),
-                validator: (value) {
-                  if (value!.isEmpty) {
-                    return 'Por favor ingrese una introducción';
-                  }
-                  return null;
-                },
-              ),
-              TextFormField(
-                controller: _direccionController,
-                decoration: InputDecoration(labelText: 'Dirección'),
-                validator: (value) {
-                  if (value!.isEmpty) {
-                    return 'Por favor ingrese la dirección';
-                  }
-                  return null;
-                },
-              ),
-              TextFormField(
-                controller: _telefonoController,
-                decoration: InputDecoration(labelText: 'Teléfono'),
-                validator: (value) {
-                  if (value!.isEmpty) {
-                    return 'Por favor ingrese el teléfono';
-                  }
-                  return null;
-                },
-              ),
-              // Añadir aquí el widget para cargar imágenes si es necesario
-              SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _submitForm,
-                child: Text('Guardar'),
-              ),
-            ],
-          ),
+        padding: EdgeInsets.all(16.0),
+        child: ListView(
+          children: <Widget>[
+            if (empresa.imagenUrl != null)
+              Image.network(empresa.imagenUrl!),
+            SizedBox(height: 20),
+            Text(
+              'Nombre: ${empresa.nombre}',
+              style: TextStyle(fontSize: 24),
+            ),
+            SizedBox(height: 10),
+            Text(
+              'Introducción: ${empresa.introduccion}',
+              style: TextStyle(fontSize: 18),
+            ),
+            SizedBox(height: 10),
+            Text(
+              'Dirección: ${empresa.direccion}',
+              style: TextStyle(fontSize: 18),
+            ),
+            SizedBox(height: 10),
+            Text(
+              'Teléfono: ${empresa.telefono}',
+              style: TextStyle(fontSize: 18),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-
 class PublishedAdsPage extends StatelessWidget {
+  Future<List<Map<String, dynamic>>> _fetchAds() async {
+    var querySnapshot =
+        await FirebaseFirestore.instance.collection('anuncios').get();
+    return querySnapshot.docs.map((doc) => doc.data()).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('Anuncios Publicados'),
       ),
-      body: StreamBuilder(
-        stream: FirebaseFirestore.instance.collection('anuncios').snapshots(),
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+        future: _fetchAds(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return Center(child: CircularProgressIndicator());
           }
-          var ads = snapshot.data!.docs;
+          var ads = snapshot.data!;
           return ListView.builder(
             itemCount: ads.length,
             itemBuilder: (context, index) {
-              var ad = ads[index].data() as Map<String, dynamic>;
+              var ad = ads[index];
               return ListTile(
                 title: Text(ad['name']),
                 subtitle: Text(ad['content']),
@@ -601,3 +684,4 @@ class PublishedAdsPage extends StatelessWidget {
     );
   }
 }
+

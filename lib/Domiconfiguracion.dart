@@ -1,8 +1,9 @@
+// ignore: file_names
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class SettingsPage extends StatelessWidget {
+class DomiSettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -185,8 +186,7 @@ class DeleteAccountPage extends StatelessWidget {
       builder: (context) {
         return AlertDialog(
           title: Text('Confirmar eliminación'),
-          content: Text(
-              '¿Estás seguro de que deseas eliminar tu cuenta? Esta acción no se puede deshacer.'),
+          content: Text('¿Estás seguro de que deseas eliminar tu cuenta? Esta acción no se puede deshacer.'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),

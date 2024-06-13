@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // Importar Firebase Firestore
-
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class MyApp extends StatelessWidget {
   @override
@@ -10,17 +9,15 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: MembershipPage(),
+      home: DomiMembershipPage(),
     );
   }
 }
 
-class MembershipPage extends StatelessWidget {
-  Future<void> _buyMembership(
-      BuildContext context, String title, int price) async {
-    // Verificar si el usuario ya ha comprado una membresía
+class DomiMembershipPage extends StatelessWidget {
+  Future<void> _buyMembership(BuildContext context, String title, int price) async {
     var snapshot = await FirebaseFirestore.instance
-        .collection('membresia_empresas')
+        .collection('membresia_domiciliarios')
         .doc('userId')
         .get();
     if (snapshot.exists) {
@@ -30,9 +27,8 @@ class MembershipPage extends StatelessWidget {
       return;
     }
 
-    // Registrar la compra de la membresía en Firestore
     await FirebaseFirestore.instance
-        .collection('membresia_empresas')
+        .collection('membresia_domiciliarios')
         .doc('userId')
         .set({
       'title': title,
@@ -44,7 +40,7 @@ class MembershipPage extends StatelessWidget {
       SnackBar(content: Text('Gracias por comprar la membresía $title.')),
     );
 
-    Navigator.pop(context); // Regresar a la pantalla anterior
+    Navigator.pop(context);
   }
 
   @override
@@ -135,9 +131,9 @@ class MembershipCard extends StatelessWidget {
               style: TextStyle(fontSize: 20.0, color: color),
             ),
             SizedBox(height: 10.0),
-            Text('Anuncios Normales: $normalAds'),
-            Text('Anuncios Urgentes: $urgentAds'),
-            Text('Anuncios Premium: $premiumAds'),
+            Text('Aplicaciones Normales: $normalAds'),
+            Text('Aplicaciones Urgentes: $urgentAds'),
+            Text('Aplicaciones Premium: $premiumAds'),
             SizedBox(height: 10.0),
             ElevatedButton(
               onPressed: () => onBuy(context),

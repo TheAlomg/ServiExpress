@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
 import 'package:servi_express/firebase_options.dart';
 import 'anuncio.dart';
+import 'Domianuncio.dart';
 
 void main() async {
   // Initialize Firebase
@@ -25,15 +26,8 @@ class LoginApp extends StatelessWidget {
   }
 }
 
-class HomeScreen extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Anuncio(); // Replace with your actual home screen widget
-  }
-}
-
 class AuthService {
-  static Future<void> login(String email, String password) async {
+  static Future<User?> login(String email, String password) async {
     if (email.isEmpty || password.isEmpty) {
       throw Exception('Ingrese un correo electrónico y contraseña válidos.');
     }
@@ -44,7 +38,7 @@ class AuthService {
         email: email.trim(),
         password: password.trim(),
       );
-      // Handle successful login (navigate to HomeScreen or show success message)
+      return userCredential.user;
     } catch (e) {
       print('Error al iniciar sesión: $e');
       if (e is FirebaseAuthException) {
@@ -87,8 +81,6 @@ class AuthService {
         'email': email,
         'userType': userType,
       });
-
-      // Handle successful registration (navigate to HomeScreen or show success message)
     } catch (e) {
       print('Error al registrar: $e');
       if (e is FirebaseAuthException) {
@@ -174,14 +166,29 @@ class _LoginScreenState extends State<LoginScreen> {
             onPressed: () async {
               if (_loginFormKey.currentState!.validate()) {
                 try {
-                  await AuthService.login(
+                  User? user = await AuthService.login(
                     _emailController.text.trim(),
                     _passwordController.text.trim(),
                   );
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => HomeScreen()),
-                  );
+                  if (user != null) {
+                    // Obtener el tipo de usuario desde Firestore
+                    DocumentSnapshot userDoc = await FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(user.uid)
+                        .get();
+                    String userType = userDoc['userType'];
+                    if (userType == 'empresa') {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (context) => Anuncio()),
+                      );
+                    } else if (userType == 'domiciliario') {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (context) => DomiAnuncio()),
+                      );
+                    }
+                  }
                 } catch (e) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text(e.toString())),
@@ -264,10 +271,24 @@ class _LoginScreenState extends State<LoginScreen> {
                     _passwordController.text.trim(),
                     _selectedUserType,
                   );
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => HomeScreen()),
+                  // Iniciar sesión automáticamente después de registrar
+                  User? user = await AuthService.login(
+                    _emailController.text.trim(),
+                    _passwordController.text.trim(),
                   );
+                  if (user != null) {
+                    if (_selectedUserType == 'empresa') {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (context) => Anuncio()),
+                      );
+                    } else if (_selectedUserType == 'domiciliario') {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (context) => DomiAnuncio()),
+                      );
+                    }
+                  }
                 } catch (e) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text(e.toString())),
